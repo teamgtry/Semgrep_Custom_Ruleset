@@ -1,0 +1,24 @@
+rules:
+  - id: custom.xss.java.response-writer-write-untrusted
+    message: "[Custom Rule] Possible XSS: untrusted input written to HTTP response. Ensure correct output encoding for the context (HTML/attr/JS/URL)."
+    severity: WARNING
+    languages: [java]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.getParameter($K)
+          - pattern: $REQ.getHeader($K)
+          - pattern: $REQ.getQueryString()
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $RESP.getWriter().write($X)
+          - pattern: $RESP.getWriter().print($X)
+          - pattern: $RESP.getWriter().println($X)
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: org.apache.commons.text.StringEscapeUtils.escapeHtml4($X)
+          - pattern: org.springframework.web.util.HtmlUtils.htmlEscape($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: medium

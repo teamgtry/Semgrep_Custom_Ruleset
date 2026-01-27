@@ -1,0 +1,12 @@
+rules:
+  - id: custom.xss.php.dynamic-code-exec
+    message: "[Custom Rule] High-risk dynamic code execution in PHP (eval/assert). If attacker-controlled, this is code injection and often leads to XSS/compromise."
+    severity: ERROR
+    languages: [php]
+    pattern-either:
+      - pattern: eval($X);
+      - pattern: assert($X);
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      confidence: high

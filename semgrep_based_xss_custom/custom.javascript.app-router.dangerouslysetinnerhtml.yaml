@@ -1,0 +1,108 @@
+rules:
+- id: custom.javascript.app-router.dangerouslysetinnerhtml
+  message: >
+    [Custom Rule] Next.js App Router의 URL 파라미터에서
+    유래한 신뢰되지 않은 데이터가 세니타이징 없이
+    dangerouslySetInnerHTML을 통해 렌더링되고 있습니다.
+    이는 DOM 기반 XSS로 실제 악용이 가능한
+    고위험 패턴입니다.
+  severity: ERROR
+  languages: [javascript, typescript]
+  confidence: HIGH
+  category: security
+  metadata:
+    cwe: "CWE-79"
+    owasp: "A03:2021-Injection"
+    technology: [react, nextjs, browser]
+    exploitability: high
+    interfile: true
+
+  mode: taint
+
+  pattern-sources:
+    - patterns:
+        - pattern-inside: |
+            import { ..., useSearchParams, ... } from 'next/navigation'
+            ...
+        - pattern-either:
+            - pattern: useSearchParams().get($K)
+            - pattern: useSearchParams().getAll($K)
+        - pattern-not: useSearchParams().get($K) ?? $SAFE
+
+    - patterns:
+        - pattern-inside: |
+            import { ..., useSearchParams, ... } from 'next/navigation'
+            ...
+            $SP = useSearchParams()
+            ...
+        - pattern-either:
+            - pattern: $SP.get($K)
+            - pattern: $SP.getAll($K)
+        - pattern-not: $SP.get($K) ?? $SAFE
+
+    - patterns:
+        - pattern-either:
+            - pattern: searchParams.$K
+            - pattern: (await searchParams).$K
+            - pattern: use(searchParams).$K
+
+  pattern-sinks:
+    - patterns:
+        - pattern-either:
+            - pattern: |
+                <$EL ... dangerouslySetInnerHTML={{ __html: $X }} ... />
+            - pattern: |
+                {..., dangerouslySetInnerHTML: { __html: $X }, ...}
+
+            - pattern: |
+                <$EL ... dangerouslySetInnerHTML={{ __html: $A + $X }} ... />
+            - pattern: |
+                <$EL ... dangerouslySetInnerHTML={{ __html: $X + $A }} ... />
+            - pattern: |
+                <$EL ... dangerouslySetInnerHTML={{ __html: `${$X}` }} ... />
+            - pattern: |
+                {..., dangerouslySetInnerHTML: { __html: $A + $X }, ...}
+            - pattern: |
+                {..., dangerouslySetInnerHTML: { __html: $X + $A }, ...}
+            - pattern: |
+                {..., dangerouslySetInnerHTML: { __html: `${$X}` }, ...}
+        - focus-metavariable: $X
+
+  pattern-sanitizers:
+    - patterns:
+        - pattern-either:
+            - pattern-inside: |
+                import $S from "dompurify"
+                ...
+            - pattern-inside: |
+                import * as $S from "dompurify"
+                ...
+            - pattern-inside: |
+                import $S from "isomorphic-dompurify"
+                ...
+            - pattern-inside: |
+                import * as $S from "isomorphic-dompurify"
+                ...
+        - pattern-either:
+            - pattern: $S.sanitize(...)
+            - pattern: $S(...)
+
+    - patterns:
+        - pattern-either:
+            - pattern-inside: |
+                import $S from 'xss'
+                ...
+            - pattern-inside: |
+                import * as $S from 'xss'
+                ...
+        - pattern: $S(...)
+
+    - patterns:
+        - pattern-either:
+            - pattern-inside: |
+                import $S from 'sanitize-html'
+                ...
+            - pattern-inside: |
+                import * as $S from 'sanitize-html'
+                ...
+        - pattern: $S(...)

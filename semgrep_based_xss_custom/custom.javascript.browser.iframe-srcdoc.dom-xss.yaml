@@ -1,0 +1,71 @@
+rules:
+  - id: custom.javascript.browser.iframe-srcdoc.dom-xss
+    message: >
+      [Custom Rule] URL 파라미터에서 유래한 신뢰되지 않은 데이터가
+      iframe srcDoc 속성에 전달되고 있습니다.
+      srcDoc은 HTML 문서로 실행되며,
+      sandbox가 없거나 allow-scripts가 허용된 경우
+      DOM 기반 XSS로 실제 악용될 수 있는
+      고위험 패턴입니다.
+    severity: WARNING
+    languages: [javascript, typescript]
+    confidence: MEDIUM
+    category: security
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021-Injection"
+      technology: [browser, react, nextjs]
+      exploitability: high
+      interfile: true
+
+    mode: taint
+
+    pattern-sources:
+      - patterns:
+          - pattern-inside: |
+              import { ..., useSearchParams, ... } from 'next/navigation'
+              ...
+          - pattern: useSearchParams().get($K)
+
+      - patterns:
+          - pattern-inside: |
+              import { ..., useSearchParams, ... } from 'next/navigation'
+              ...
+              $SP = useSearchParams()
+              ...
+          - pattern: $SP.get($K)
+
+      - patterns:
+          - pattern-either:
+              - pattern: new URLSearchParams(location.search).get($K)
+              - pattern: new URLSearchParams(window.location.search).get($K)
+              - pattern: new URL(location.href).searchParams.get($K)
+              - pattern: location.hash.substring(1)
+              - pattern: window.location.hash.substring(1)
+
+    pattern-sinks:
+
+      - patterns:
+          - pattern: |
+              <iframe ... srcDoc={$X} ... />
+          - focus-metavariable: $X
+          - pattern-not: |
+              <iframe ... srcDoc="..." ... />
+          - pattern-not-inside: |
+              <iframe ... sandbox=... ... />
+
+      - patterns:
+          - pattern: |
+              <iframe ... srcDoc={$X} ... />
+          - focus-metavariable: $X
+          - pattern-not: |
+              <iframe ... srcDoc="..." ... />
+          - pattern-inside: |
+              <iframe ... sandbox="...allow-scripts..." ... />
+
+    pattern-sanitizers:
+
+      - pattern-either:
+          - pattern: DOMPurify.sanitize($X)
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: $S.sanitize($X)

@@ -1,0 +1,30 @@
+rules:
+  - id: custom.xss.php.taint.to-echo-print
+    message: "[Custom Rule] Possible XSS (PHP): request/tainted input flows into echo/print/printf/die/exit without output escaping."
+    severity: WARNING
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_GET[$K]
+          - pattern: $_POST[$K]
+          - pattern: $_REQUEST[$K]
+          - pattern: $_COOKIE[$K]
+          - pattern: $_SERVER[$K]
+    pattern-sinks:
+      - pattern-either:
+          - pattern: echo $X;
+          - pattern: print $X;
+          - pattern: printf($FMT, $X, ...);
+          - pattern: die($X);
+          - pattern: exit($X);
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: htmlspecialchars($X, ...)
+          - pattern: htmlentities($X, ...)
+          # Weak (may hide issues); included only to reduce noise in exploratory scans:
+          - pattern: strip_tags($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: medium

@@ -1,0 +1,89 @@
+rules:
+  - id: custom.javascript.dom-xss-dangerouslysetinnerhtml
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      [Custom Rule] 신뢰할 수 없는(자격증명과 무관한) 외부 입력 데이터가 dangerouslySetInnerHTML을 통해 렌더링되고 있으며, 그 결과 실제로 악용 가능한 DOM 기반 XSS 취약점이 발생할 수 있습니다.
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021-Injection"
+      category: security
+      confidence: high
+
+    mode: taint
+
+    pattern-sources:
+
+      - patterns:
+          - pattern: function $C({ ..., $X, ... }) { ... }
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern: ({ ..., $X, ... }) => { ... }
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern-inside: |
+              function $C($PROPS) {
+                ...
+              }
+          - pattern: $PROPS.$X
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern-inside: |
+              $C = ($PROPS) => {
+                ...
+              }
+          - pattern: $PROPS.$X
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern-inside: |
+              class $C {
+                ...
+                render() {
+                  ...
+                }
+              }
+          - pattern: this.props.$X
+          - focus-metavariable: $X
+
+      - pattern-either:
+          - pattern: useParams().$FIELD
+          - pattern: useSearchParams()[0].get(...)
+          - pattern: new URLSearchParams(window.location.search).get(...)
+          - pattern: new URL(window.location.href).searchParams.get(...)
+          - pattern: window.location.search
+          - pattern: window.location.hash
+
+      - pattern: await $R.json()
+
+      - pattern: (await axios.$METHOD(...)).data
+
+      - patterns:
+          - pattern-inside: |
+              $RES = await axios.$METHOD(...)
+              ...
+          - pattern: $RES.data
+          - focus-metavariable: $RES
+
+      - pattern: useQuery(...).data
+
+      - patterns:
+          - pattern-inside: |
+              const { data: $D, ... } = useQuery(...)
+              ...
+          - pattern: $D
+          - focus-metavariable: $D
+
+    pattern-sinks:
+      - patterns:
+          - pattern-inside: <$_ dangerouslySetInnerHTML={$ANY} />
+          - pattern: "{ __html: $HTML }"
+          - focus-metavariable: $HTML
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: sanitizeHtml(...)

@@ -1,0 +1,13 @@
+rules:
+  - id: custom.xss.js.regex-strip-script-tag
+    message: "[Custom Rule] Regex-based <script> stripping is unsafe and bypassable (XSS may remain or be reconstructed). Prefer parser-based sanitization."
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: $S.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/g, "")
+          - pattern: $S.replace(/<script.*?>.*?<\/script>/g, "")
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: medium

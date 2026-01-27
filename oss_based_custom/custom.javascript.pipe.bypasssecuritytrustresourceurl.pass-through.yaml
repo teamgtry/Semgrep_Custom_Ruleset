@@ -1,0 +1,31 @@
+rules:
+  - id: custom.javascript.pipe.bypasssecuritytrustresourceurl.pass-through
+    languages:
+      - typescript
+    severity: ERROR
+    message: >
+      [Custom Rule] Angular Pipe의 transform() 입력값이
+      DomSanitizer.bypassSecurityTrustResourceUrl()로
+      직접 전달되고 있습니다. 검증되지 않은 URL이
+      신뢰 처리될 경우 javascript:, data: 스킴 또는
+      비인가 origin을 통해 XSS로 실제 악용될 수 있는
+      고위험 패턴입니다.
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high
+      exploitability: high
+      pattern_focus: pipe_pass_through_bypass
+    patterns:
+      - pattern-inside: |
+          transform($URL, ...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: return this.$SAN.bypassSecurityTrustResourceUrl($URL)
+          - pattern: return $SAN.bypassSecurityTrustResourceUrl($URL)
+          - pattern: this.$SAN.bypassSecurityTrustResourceUrl($URL)
+          - pattern: $SAN.bypassSecurityTrustResourceUrl($URL)
+      - pattern-not: $SAN.bypassSecurityTrustResourceUrl("")
+      - pattern-not: $SAN.bypassSecurityTrustResourceUrl('')
+      - pattern-not: $SAN.bypassSecurityTrustResourceUrl(``)

@@ -1,0 +1,29 @@
+rules:
+  - id: custom.xss.pack.wordpress.taint.to-echo-without-esc
+    message: "[Custom Rule] Possible XSS (WordPress): request input flows into output without WordPress escaping helpers."
+    severity: WARNING
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_GET[$K]
+          - pattern: $_POST[$K]
+          - pattern: $_REQUEST[$K]
+    pattern-sinks:
+      - pattern-either:
+          - pattern: echo $X;
+          - pattern: print $X;
+          - pattern: printf($FMT, $X, ...);
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: esc_html($X)
+          - pattern: esc_attr($X)
+          - pattern: esc_url($X)
+          - pattern: esc_js($X)
+          - pattern: wp_kses($X, ...)
+          - pattern: wp_kses_post($X)
+          - pattern: sanitize_text_field($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: low

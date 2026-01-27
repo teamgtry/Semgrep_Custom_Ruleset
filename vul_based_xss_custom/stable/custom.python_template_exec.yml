@@ -1,0 +1,21 @@
+rules:
+  - id: custom.xss.python.flask-render-template-string
+    message: "[Custom Rule] High-risk: render_template_string renders attacker-controlled templates/HTML. Avoid with untrusted input."
+    severity: ERROR
+    languages: [python]
+    pattern: render_template_string($X, ...)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high
+
+  - id: custom.xss.python.jinja2-from-string-render
+    message: "[Custom Rule] High-risk: Jinja2 template from untrusted string rendered. Can lead to XSS (and depending on usage, SSTI)."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: $ENV.from_string($X).render(...)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: medium

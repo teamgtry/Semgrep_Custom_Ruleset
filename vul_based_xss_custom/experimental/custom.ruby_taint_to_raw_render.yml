@@ -1,0 +1,25 @@
+rules:
+  - id: custom.xss.ruby.taint.to-render-raw-html
+    message: "[Custom Rule] Possible XSS (Rails): tainted input flows into raw HTML rendering (render html/inline/raw/html_safe)."
+    severity: WARNING
+    languages: [ruby]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: params[$K]
+          - pattern: params.fetch($K, ...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: "render html: $X"
+          - pattern: "render inline: $X"
+          - pattern: raw($X)
+          - pattern: $X.html_safe
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: ERB::Util.html_escape($X)
+          - pattern: CGI.escapeHTML($X)
+          - pattern: sanitize($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: low

@@ -1,0 +1,35 @@
+rules:
+  - id: custom.javascript.directus.filename-disk.pointer-driven-delete
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >
+      [Custom Rule] 파일 삭제 또는 이동 로직이 데이터베이스에
+      저장된 filename_disk 값에 직접 의존하고 있습니다.
+      해당 값이 사용자에 의해 조작될 수 있는 경우,
+      본인 레코드 삭제를 통해 임의 파일 삭제 또는
+      파일 경로 조작이 발생할 수 있으며,
+      이는 실제 권한 우회로 이어질 수 있는
+      고위험 패턴입니다.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-639: Authorization Bypass Through User-Controlled Key"
+        - "CWE-732: Incorrect Permission Assignment for Critical Resource"
+      confidence: HIGH
+    paths:
+      include:
+        - api/src/services/files.ts
+        - api/src/services/tus/data-store.ts
+    pattern-either:
+      - pattern: |
+          $PFX = path.parse($FILE['filename_disk']).name;
+          ...
+          for await (const $FP of $DISK.list($PFX)) {
+            ...
+            await $DISK.delete($FP);
+            ...
+          }
+      - pattern: |
+          await $DISK.delete($PAYLOAD.filename_disk);
+      - pattern: |
+          await $DISK.move($SRC, $PAYLOAD.filename_disk);

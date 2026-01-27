@@ -1,0 +1,24 @@
+rules:
+  - id: custom.javascript.redos.regex-literal.alternation-repeated
+    languages:
+      - javascript
+      - typescript
+    severity: WARNING
+    message: >
+      [Custom Rule] 반복되는 그룹 내부에 alternation(|)이 포함된
+      정규식 리터럴이 사용되고 있습니다. 입력에 따라 과도한
+      백트래킹이 발생할 수 있으며, 이는 ReDoS
+      (정규식 기반 서비스 거부 공격)로 악용될 가능성이 있습니다.
+    metadata:
+      category: security
+      cwe: "CWE-1333"
+      redos_type: heuristic
+      pattern_focus: regex_structure
+    patterns:
+      - pattern-either:
+          - pattern: const $NAME = $RE;
+          - pattern: let $NAME = $RE;
+          - pattern: var $NAME = $RE;
+      - metavariable-regex:
+          metavariable: $RE
+          regex: ^\/.*\([^\/\n]*\|[^\/\n]*\)(?:[+*]|\{\d+(?:,\d*)?\}).*\/[gimsuy]*$

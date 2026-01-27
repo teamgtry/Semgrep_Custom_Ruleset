@@ -1,0 +1,23 @@
+rules:
+  - id: custom.xss.pack.springmvc.taint.to-model-or-response
+    message: "[Custom Rule] Possible XSS (Spring MVC): untrusted request input flows into model or response output without context-appropriate encoding."
+    severity: WARNING
+    languages: [java]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.getParameter($K)
+          - pattern: $REQ.getHeader($K)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $MODEL.addAttribute($NAME, $X)
+          - pattern: $MAP.put($NAME, $X)
+          - pattern: $RESP.getWriter().write($X)
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: org.springframework.web.util.HtmlUtils.htmlEscape($X)
+          - pattern: org.apache.commons.text.StringEscapeUtils.escapeHtml4($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: low

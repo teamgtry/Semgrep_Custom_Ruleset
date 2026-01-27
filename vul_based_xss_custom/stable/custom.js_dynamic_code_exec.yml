@@ -1,0 +1,17 @@
+rules:
+  - id: custom.xss.js.dynamic-code-exec
+    message: "[Custom Rule] High-risk dynamic code execution (eval/Function/setTimeout-string). If attacker-controlled, this is XSS/JS injection."
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: window.eval($X)
+      - pattern: (0, eval)($X)
+      - pattern: new Function($X)
+      - pattern: Function($X)
+      - pattern: setTimeout($X, ...)
+      - pattern: setInterval($X, ...)
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      confidence: high

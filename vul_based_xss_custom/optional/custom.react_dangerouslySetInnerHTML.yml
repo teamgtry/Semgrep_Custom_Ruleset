@@ -1,0 +1,39 @@
+rules:
+  - id: custom.xss.optional.react-dangerouslySetInnerHTML-usage
+    message: "[Custom Rule] Dangerous raw HTML injection (React dangerouslySetInnerHTML). Ensure content is trusted or sanitized with a robust HTML sanitizer."
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: "<div dangerouslySetInnerHTML={{ __html: $HTML }} />"
+          - pattern: "<div dangerouslySetInnerHTML={{ __html: $HTML }}>...</div>"
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high
+
+  - id: custom.xss.optional.react-dangerouslySetInnerHTML-taint
+    message: "[Custom Rule] Possible XSS: untrusted data flows into React dangerouslySetInnerHTML."
+    severity: WARNING
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $X.innerText
+          - pattern: $X.textContent
+          - pattern: $X.value
+          - pattern: window.location.hash
+          - pattern: window.location.search
+          - pattern: localStorage.getItem($K)
+          - pattern: sessionStorage.getItem($K)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: "<div dangerouslySetInnerHTML={{ __html: $V }} />"
+          - pattern: "<div dangerouslySetInnerHTML={{ __html: $V }}>...</div>"
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: DOMPurify.sanitize($V)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: medium

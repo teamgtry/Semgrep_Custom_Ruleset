@@ -1,0 +1,30 @@
+rules:
+  - id: custom.xss.ruby.rails-html-safe
+    message: "[Custom Rule] Potential XSS: html_safe disables escaping. Ensure content is trusted or sanitized."
+    severity: WARNING
+    languages: [ruby]
+    pattern: $X.html_safe
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high
+
+  - id: custom.xss.ruby.rails-raw
+    message: "[Custom Rule] Potential XSS: raw() outputs unescaped HTML."
+    severity: WARNING
+    languages: [ruby]
+    pattern: raw($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high
+
+  - id: custom.xss.ruby.rails-render-inline
+    message: "[Custom Rule] High-risk: render inline can render attacker-controlled templates/HTML."
+    severity: ERROR
+    languages: [ruby]
+    pattern: "render inline: $X"
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high

@@ -1,0 +1,36 @@
+rules:
+  - id: custom.javascript.dom-sanitizer.bypasssecuritytrust.variable-input
+    languages:
+      - typescript
+    severity: WARNING
+    message: >
+      [Custom Rule] Angular DomSanitizer의 bypassSecurityTrust* API가
+      리터럴이 아닌 변수 입력과 함께 사용되고 있습니다.
+      검증되지 않은 값이 신뢰 처리될 경우 HTML, URL, Script
+      컨텍스트에서 XSS로 악용될 가능성이 있습니다.
+    metadata:
+      category: security
+      cwe: CWE-79
+      confidence: medium
+    patterns:
+      - pattern-either:
+          - pattern: $SAN.bypassSecurityTrustResourceUrl($X)
+          - pattern: $SAN.bypassSecurityTrustUrl($X)
+          - pattern: $SAN.bypassSecurityTrustHtml($X)
+          - pattern: $SAN.bypassSecurityTrustStyle($X)
+          - pattern: $SAN.bypassSecurityTrustScript($X)
+      - pattern-not: $SAN.bypassSecurityTrustResourceUrl("...")
+      - pattern-not: $SAN.bypassSecurityTrustResourceUrl('...')
+      - pattern-not: $SAN.bypassSecurityTrustResourceUrl(`...`)
+      - pattern-not: $SAN.bypassSecurityTrustUrl("...")
+      - pattern-not: $SAN.bypassSecurityTrustUrl('...')
+      - pattern-not: $SAN.bypassSecurityTrustUrl(`...`)
+      - pattern-not: $SAN.bypassSecurityTrustHtml("...")
+      - pattern-not: $SAN.bypassSecurityTrustHtml('...')
+      - pattern-not: $SAN.bypassSecurityTrustHtml(`...`)
+      - pattern-not: $SAN.bypassSecurityTrustStyle("...")
+      - pattern-not: $SAN.bypassSecurityTrustStyle('...')
+      - pattern-not: $SAN.bypassSecurityTrustStyle(`...`)
+      - pattern-not: $SAN.bypassSecurityTrustScript("...")
+      - pattern-not: $SAN.bypassSecurityTrustScript('...')
+      - pattern-not: $SAN.bypassSecurityTrustScript(`...`)

@@ -1,0 +1,63 @@
+# object / embed (resource load 전용)
+rules:
+- id: custom.javascript.browser.object-embed.dom-xss
+  message: >
+    [Custom Rule] Untrusted data derived from URL parameters is rendered into object or embed
+    elements. If the loaded resource is interpreted as HTML or SVG, this may
+    lead to exploit-grade DOM XSS.
+  severity: WARNING
+  languages: [javascript, typescript]
+  confidence: MEDIUM
+  category: security
+  metadata:
+    cwe: "CWE-79"
+    owasp: "A03:2021-Injection"
+    technology: [browser, react]
+    exploitability: conditional
+    interfile: true
+
+  mode: taint
+
+  pattern-sources:
+    - patterns:
+        - pattern-either:
+            - pattern: new URLSearchParams(location.search).get($K)
+            - pattern: new URLSearchParams(window.location.search).get($K)
+            - pattern: new URL(location.href).searchParams.get($K)
+            - pattern: location.hash.substring(1)
+            - pattern: window.location.hash.substring(1)
+
+  pattern-sinks:
+
+    - patterns:
+        - pattern: |
+            <object ... data={$X} ... />
+        - focus-metavariable: $X
+
+        - pattern-not: |
+            <object ... data="..." ... />
+
+        - pattern-not-inside: |
+            <object ... type="image/..." ... />
+        - pattern-not-inside: |
+            <object ... type="application/pdf" ... />
+
+    - patterns:
+        - pattern: |
+            <embed ... src={$X} ... />
+        - focus-metavariable: $X
+
+        - pattern-not: |
+            <embed ... src="..." ... />
+
+        - pattern-not-inside: |
+            <embed ... type="image/..." ... />
+        - pattern-not-inside: |
+            <embed ... type="application/pdf" ... />
+
+  pattern-sanitizers:
+
+    - pattern-either:
+        - pattern: DOMPurify.sanitize($X)
+        - pattern: DOMPurify.sanitize(...)
+        - pattern: $S.sanitize($X)

@@ -1,0 +1,49 @@
+rules:
+  - id: custom.xss.python.taint.to-django-httpresponse
+    message: "[Custom Rule] Possible XSS (Django): untrusted input flows into HttpResponse/JsonResponse without explicit escaping."
+    severity: WARNING
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.GET.get($K, ...)
+          - pattern: request.POST.get($K, ...)
+          - pattern: request.GET[$K]
+          - pattern: request.POST[$K]
+          - pattern: request.headers.get($K, ...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: HttpResponse($X, ...)
+          - pattern: JsonResponse($X, ...)
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: django.utils.html.escape($X)
+          - pattern: format_html($X, ...)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: low
+
+  - id: custom.xss.python.taint.to-flask-response
+    message: "[Custom Rule] Possible XSS (Flask): untrusted input flows into Response/make_response without explicit escaping."
+    severity: WARNING
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args.get($K, ...)
+          - pattern: request.form.get($K, ...)
+          - pattern: request.values.get($K, ...)
+          - pattern: request.headers.get($K, ...)
+          - pattern: request.get_json(...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: Response($X, ...)
+          - pattern: make_response($X, ...)
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: markupsafe.escape($X)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: low

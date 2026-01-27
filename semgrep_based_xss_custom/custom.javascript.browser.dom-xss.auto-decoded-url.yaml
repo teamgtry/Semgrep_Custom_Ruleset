@@ -1,0 +1,99 @@
+rules:
+  - id: custom.javascript.browser.dom-xss.auto-decoded-url
+    message: >
+      [Custom Rule] location.search 또는 location.hash에서
+      자동 디코딩된 URL 데이터가 강력한 세니타이징 없이
+      HTML 실행 컨텍스트(DOM/jQuery)에 전달되고 있습니다.
+      이는 DOM 기반 XSS로 실제 악용될 수 있는 고위험 패턴입니다.
+    severity: WARNING
+    languages: [javascript]
+    mode: taint
+
+    metadata:
+      category: security
+      subcategory: [xss]
+      cwe: ["CWE-79"]
+      owasp:
+        - A03:2021 - Injection
+      confidence: high
+      exploitability: high
+      pattern_focus: auto_decoded_url_to_html
+      technology: [browser]
+
+    #########################
+    # Sources
+    #########################
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: location.search
+              - pattern: location.hash
+              - pattern: window.location.search
+              - pattern: window.location.hash
+
+    #########################
+    # Sinks
+    #########################
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              # DOM APIs
+              - pattern: $EL.innerHTML = $X
+              - pattern: $EL.innerHTML += $X
+              - pattern: $EL.outerHTML = $X
+              - pattern: $EL.insertAdjacentHTML("beforeend", $X)
+              - pattern: $EL.insertAdjacentHTML("afterbegin", $X)
+
+              # jQuery chaining
+              - pattern: $($Y).html($X)
+              - pattern: $($Y).append($X)
+              - pattern: $($Y).prepend($X)
+              - pattern: $($Y).before($X)
+              - pattern: $($Y).after($X)
+
+              - pattern: jQuery($Y).html($X)
+              - pattern: jQuery($Y).append($X)
+              - pattern: jQuery($Y).prepend($X)
+              - pattern: jQuery($Y).before($X)
+              - pattern: jQuery($Y).after($X)
+          - focus-metavariable: $X
+
+      # jQuery object variable sinks
+      - patterns:
+          - pattern: $J.html($X)
+          - pattern-inside: |
+              $J = $($Y)
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern: $J.append($X)
+          - pattern-inside: |
+              $J = $($Y)
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern: $J.prepend($X)
+          - pattern-inside: |
+              $J = $($Y)
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern: $J.before($X)
+          - pattern-inside: |
+              $J = $($Y)
+          - focus-metavariable: $X
+
+      - patterns:
+          - pattern: $J.after($X)
+          - pattern-inside: |
+              $J = $($Y)
+          - focus-metavariable: $X
+
+    #########################
+    # Strong sanitizers
+    #########################
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: DOMPurify.sanitize(...)
+              - pattern: sanitizeHtml(...)

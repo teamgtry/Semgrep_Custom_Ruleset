@@ -1,0 +1,144 @@
+rules:
+  - id: custom.javascript.server-side-redos-validation-dsl
+    languages: [javascript, typescript]
+    severity: ERROR
+
+    message: >
+      [Custom Rule] 서버사이드 검증 로직에서 재앙적 백트래킹을 유발하는 정규표현식이 입력 길이 제한 없이 사용되고 있습니다. 이는 실제로 악용 가능한 ReDoS 취약점이며, 공격자가 특수하게 조작된 입력값을 반복 전송하여 CPU 자원을 고갈시키고 서비스 거부(DoS) 상태를 유발할 수 있습니다.
+
+    metadata:
+      category: security
+      cwe: "CWE-1333"
+      confidence: HIGH
+      redos_type: validation_regex
+      exploitability: high
+      focus: exploitable
+
+    mode: search
+
+    pattern-inside:
+      - pattern-either:
+          - pattern: |
+              app.$METHOD($PATH, ..., (req, res) => {
+                ...
+              })
+          - pattern: |
+              app.$METHOD($PATH, ..., function(req, res) {
+                ...
+              })
+          - pattern: |
+              router.$METHOD($PATH, ..., (req, res) => {
+                ...
+              })
+          - pattern: |
+              router.$METHOD($PATH, ..., function(req, res) {
+                ...
+              })
+          
+          - pattern: |
+              app.$METHOD($PATH, [ ... ], ...)
+          - pattern: |
+              router.$METHOD($PATH, [ ... ], ...)
+          
+          # Generic server handlers
+          - pattern: |
+              export async function $HANDLER(req, res) {
+                ...
+              }
+          - pattern: |
+              export function $HANDLER(req, res) {
+                ...
+              }
+          
+          # Next.js API routes
+          - pattern: |
+              export default async function handler(req, res) {
+                ...
+              }
+
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern-either:
+                  - pattern: yup.string(). ... .matches($REGEX, ...)
+                  - pattern: yup.string(). ... .matches($REGEX)
+                  - pattern: yup.string().matches($REGEX, ...)
+                  - pattern: yup.string().matches($REGEX)
+              - pattern-not-inside: |
+                  yup.string(). ... .max(...). ...
+              - pattern-not-inside: |
+                  yup.string(). ... .length(...). ...
+
+          - patterns:
+              - pattern: $SCHEMA.matches($REGEX, ...)
+              - metavariable-pattern:
+                  metavariable: $SCHEMA
+                  patterns:
+                    - pattern-either:
+                        - pattern: yup.string()
+                        - pattern: yup.string(). ...
+              - pattern-not-inside: |
+                  $SCHEMA. ... .max(...). ...
+
+          - patterns:
+              - pattern-either:
+                  - pattern: Joi.string(). ... .pattern($REGEX, ...)
+                  - pattern: Joi.string(). ... .regex($REGEX, ...)
+                  - pattern: Joi.string().pattern($REGEX, ...)
+                  - pattern: Joi.string().regex($REGEX, ...)
+              - pattern-not-inside: |
+                  Joi.string(). ... .max(...). ...
+              - pattern-not-inside: |
+                  Joi.string(). ... .length(...). ...
+
+          - patterns:
+              - pattern-either:
+                  - pattern: z.string(). ... .regex($REGEX, ...)
+                  - pattern: z.string().regex($REGEX, ...)
+              - pattern-not-inside: |
+                  z.string(). ... .max(...). ...
+              - pattern-not-inside: |
+                  z.string(). ... .length(...). ...
+
+          - patterns:
+              - pattern-either:
+                  - pattern: body(...). ... .matches($REGEX)
+                  - pattern: query(...). ... .matches($REGEX)
+                  - pattern: param(...). ... .matches($REGEX)
+              - pattern-not-inside: |
+                  body(...). ... .isLength({max: ...}). ...
+              - pattern-not-inside: |
+                  query(...). ... .isLength({max: ...}). ...
+              - pattern-not-inside: |
+                  param(...). ... .isLength({max: ...}). ...
+
+    pattern-constraints:
+      - metavariable: $REGEX
+        pattern: /$X/
+
+      - metavariable: $REGEX
+        regex: |
+          (
+            \([^)]*[+*]\)[+*]|              # (a+)+, (.*)*
+            \(([^()]*\|[^()]*)+\)[+*]|      # (a|b)+, (foo|bar)*
+            \([^)]+\)\+\([^)]+\)\+|         # (a)+(b)+
+            (\.\*){2,}|                     # .*.*
+            \[[^\]]+\][+*]\[[^\]]+\][+*]|   # [a-z]+[0-9]+
+            \([^)]*\)\{[0-9]+,\}|           # (a){100,}
+            \([^)]*[+*][^)]*\)\?            # (a+)?, (.*)? 
+          )
+
+    pattern-not-inside:
+      - pattern: |
+          'use client';
+          ...
+      - pattern: |
+          "use client";
+          ...
+
+    pattern-not:
+      # Schema-level constraints
+      - pattern: |
+          { ..., maxLength: $N, ... }
+      - pattern: |
+          { ..., max: $N, ... }

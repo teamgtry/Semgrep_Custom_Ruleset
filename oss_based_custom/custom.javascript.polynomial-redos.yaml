@@ -1,0 +1,54 @@
+rules:
+  - id: custom.javascript.polynomial-redos
+    languages: [javascript, typescript]
+    severity: ERROR
+
+    message: >
+      [Custom Rule] 사용자로부터 입력된 데이터가 중첩 반복자 또는 모호한 선택 구조를
+      포함한 정규식에 의해 서버 측에서 반복적으로 평가되고 있습니다.
+      이러한 정규식은 Polynomial ReDoS를 유발할 수 있으며, 실제 요청 반복을 통해
+      CPU 자원을 고갈시키는 방식으로 서비스 거부(DoS) 공격에 악용될 수 있습니다.
+
+    metadata:
+      category: security
+      cwe: "CWE-1333"
+      redos_type: polynomial
+      exploitability: high
+      confidence: medium
+      rationale: >
+        This rule focuses on exploit-reproducible server-side ReDoS cases
+        where user input is repeatedly evaluated by a vulnerable RegExp object.
+        Design-level risks and heuristic mitigations are intentionally excluded
+        to reduce false positives in OSS analysis.
+
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: req.body.$X
+          - pattern: req.query.$X
+          - pattern: req.params.$X
+          - pattern: request.body.$X
+          - pattern: request.query.$X
+          - pattern: request.params.$X
+          - pattern: ctx.request.body.$X
+          - pattern: context.request.body.$X
+
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $REGEX.test($DATA)
+          - pattern: $REGEX.exec($DATA)
+
+          - pattern: new RegExp($REGEX).test($DATA)
+          - pattern: new RegExp($REGEX).exec($DATA)
+
+          - pattern: $DATA.match($REGEX)
+          - pattern: $DATA.replace($REGEX, ...)
+          - pattern: $DATA.split($REGEX)
+
+    pattern-constraints:
+      - metavariable: $REGEX
+        regex: |
+          \([^)]*\+[^)]*\)\+
+          |
+          \([^)]*\|[^)]*\)\+

@@ -1,0 +1,19 @@
+rules:
+  - id: custom.xss.js.dom-attr-injection.template-to-innerhtml
+    message: "[Custom Rule] Likely DOM XSS: DOM text (innerText/textContent) interpolated into an HTML attribute inside a template literal assigned to innerHTML/insertAdjacentHTML."
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: $EL.innerHTML = `$HTML`
+          - pattern: $EL.innerHTML += `$HTML`
+          - pattern: $EL.insertAdjacentHTML($POS, `$HTML`)
+      - metavariable-pattern:
+          metavariable: $HTML
+          patterns:
+            # attribute="...${ something.innerText/textContent }..."
+            - pattern-regex: '=\s*"\s*\$\{[^}]*\.(innerText|textContent)[^}]*\}\s*"'
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: high

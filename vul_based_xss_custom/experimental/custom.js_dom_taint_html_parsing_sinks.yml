@@ -1,0 +1,34 @@
+rules:
+  - id: custom.xss.js.taint.to-html-parsing-sinks
+    message: "[Custom Rule] Possible DOM XSS: untrusted data flows into HTML parsing sinks (innerHTML/outerHTML/insertAdjacentHTML/document.write)."
+    severity: WARNING
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $X.innerText
+          - pattern: $X.textContent
+          - pattern: $X.value
+          - pattern: $X.val()
+          - pattern: window.location.hash
+          - pattern: window.location.search
+          - pattern: document.location.hash
+          - pattern: document.location.search
+          - pattern: localStorage.getItem($K)
+          - pattern: sessionStorage.getItem($K)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $EL.innerHTML = $V
+          - pattern: $EL.innerHTML += $V
+          - pattern: $EL.outerHTML = $V
+          - pattern: $EL.insertAdjacentHTML($POS, $V)
+          - pattern: document.write($V)
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: $EL.textContent = $V
+          - pattern: $EL.innerText = $V
+          - pattern: DOMPurify.sanitize($V)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      confidence: medium
