@@ -4,7 +4,7 @@
 
 
 
-\# Semgrep Custom Ruleset 🔍
+# Semgrep Custom Ruleset 🔍
 
 
 
@@ -24,7 +24,7 @@
 
 
 
-\## 🎯 목적 (Purpose)
+## 🎯 목적 (Purpose)
 
 
 
@@ -40,7 +40,7 @@
 
 
 
-\## 🧩 대상 기술 스택 (Target)
+## 🧩 대상 기술 스택 (Target)
 
 
 
@@ -80,7 +80,7 @@
 
 
 
-\## 🔐 다루는 취약점 유형 (Vulnerability Types)
+## 🔐 다루는 취약점 유형 (Vulnerability Types)
 
 
 
@@ -104,7 +104,7 @@
 
 
 
-\## 📁 디렉터리 구조 (Structure)
+## 📁 디렉터리 구조 (Structure)
 
 
 
