@@ -41,7 +41,7 @@
 
 
 
-\- Backend
+### Backend
 
 &nbsp; - Python (Frappe / ERPNext)
 
@@ -49,11 +49,11 @@
 
 &nbsp; - PHP 기반 CMS
 
-\- Frontend
+### Frontend
 
 &nbsp; - JavaScript
 
-\- Framework / Platform
+### Framework / Platform
 
 &nbsp; - Paperless-ngx
 
