@@ -97,39 +97,3 @@
 
 
 
----
-
-
-
-## 📁 디렉터리 구조 (Structure)
-
-
-
-```text
-
-Semgrep\_Custom\_Ruleset/
-
-├── rules/
-
-│   ├── ssrf/
-
-│   ├── xss/
-
-│   ├── sqli/
-
-│   ├── path\_traversal/
-
-│   └── misc/
-
-├── examples/
-
-│   └── vulnerable\_code\_samples/
-
-├── docs/
-
-│   └── rule\_design\_notes.md
-
-└── README.md
-
-
-
