@@ -1,5 +1,5 @@
 rules:
-  - id: custom.typescript.directus.accountability.from-request
+  - id: custom.typescript.accountability.from-request
     languages: [typescript]
     severity: ERROR
     message: >
@@ -19,4 +19,5 @@ rules:
     paths:
       include:
         - api/src/services/tus/server.ts
+
     pattern-regex: 'accountability\s*:\s*req\.accountability'
