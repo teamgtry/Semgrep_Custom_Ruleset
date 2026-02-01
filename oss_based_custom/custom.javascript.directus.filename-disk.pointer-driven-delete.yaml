@@ -1,5 +1,5 @@
 rules:
-  - id: custom.javascript.directus.filename-disk.pointer-driven-delete
+  - id: custom.javascript.filename-disk.pointer-driven-delete
     languages: [typescript, javascript]
     severity: ERROR
     message: >
@@ -32,4 +32,5 @@ rules:
       - pattern: |
           await $DISK.delete($PAYLOAD.filename_disk);
       - pattern: |
+
           await $DISK.move($SRC, $PAYLOAD.filename_disk);
