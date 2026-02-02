@@ -1,4 +1,0 @@
-includes:
-  - oss_based_custom
-  - semgrep_based_xss_custom
-  - vul_based_xss_custom
