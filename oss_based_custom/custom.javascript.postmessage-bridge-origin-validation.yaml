@@ -1,0 +1,160 @@
+rules:
+  ###########################################################################
+  # A) JS/TS: message handler 내부에서 "민감 동작" 수행
+  # 이 자체가 '브릿지'로서 위험하므로 1차 후보로 올림
+  ###########################################################################
+  - id: web.postmessage.bridge.sensitive-action
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      postMessage message handler performs a sensitive action (cookie/storage/authenticated fetch).
+      Ensure strict validation of event.origin and event.source (allowlist) to prevent cross-origin
+      message injection / confused deputy.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: |
+              window.addEventListener("message", ($E) => { ... })
+          - pattern: |
+              window.addEventListener('message', ($E) => { ... })
+          - pattern: |
+              window.addEventListener("message", function ($E) { ... })
+          - pattern: |
+              window.addEventListener('message', function ($E) { ... })
+          - pattern: |
+              window.onmessage = ($E) => { ... }
+          - pattern: |
+              window.onmessage = function ($E) { ... }
+
+      - pattern-either:
+          # session fixation / state manipulation primitives
+          - pattern: |
+              document.cookie = ...
+          - pattern: |
+              localStorage.setItem(...)
+          - pattern: |
+              sessionStorage.setItem(...)
+          - pattern: |
+              Cookies.set(...)
+
+          # authenticated / CSRF-bearing requests
+          - pattern: |
+              fetch(..., { ..., credentials: "include", ... })
+          - pattern: |
+              fetch(..., { ..., credentials: 'include', ... })
+          - pattern: |
+              fetch(..., { ..., headers: { ..., "X-CSRF-Token": ..., ... }, ... })
+          - pattern: |
+              fetch(..., { ..., headers: { ..., 'X-CSRF-Token': ..., ... }, ... })
+
+  ###########################################################################
+  # B) JS/TS: targetOrigin="*" 사용 (데이터/토큰 유출 및 공격면 확대)
+  ###########################################################################
+  - id: web.postmessage.bridge.wildcard-target-origin
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      postMessage uses wildcard targetOrigin="*". Prefer a strict targetOrigin allowlist.
+      If combined with privileged bridge logic, this can increase risk of cross-origin abuse.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: |
+          $W.postMessage($DATA, "*")
+      - pattern: |
+          $W.postMessage($DATA, '*')
+
+  ###########################################################################
+  # C) JS/TS: event.source.postMessage(...,"*") 응답 패턴
+  ###########################################################################
+  - id: web.postmessage.bridge.reply-wildcard
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      event.source.postMessage(...,"*") reply pattern detected. If the handler does not validate
+      event.origin/event.source, this can enable cross-origin exfiltration of privileged responses.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: |
+          $E.source.postMessage($DATA, "*")
+      - pattern: |
+          $E.source.postMessage($DATA, '*')
+
+  ###########################################################################
+  # D) Generic: Ruby/ERB/HAML/SLIM 등 "문자열/템플릿에 들어간 JS 브릿지" 탐지
+  #    - 특정 프로젝트 키워드/이벤트명 없음
+  #    - message listener + 민감 동작 흔적 조합만 사용
+  ###########################################################################
+  - id: web.postmessage.bridge.sensitive-action.generic
+    languages: [generic]
+    severity: WARNING
+    message: >
+      Possible postMessage bridge in non-JS file (template/server code) with sensitive actions
+      (cookie/storage/authenticated fetch). Review for strict event.origin/event.source validation.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: LOW
+    paths:
+      include:
+        - "**/*.rb"
+        - "**/*.erb"
+        - "**/*.haml"
+        - "**/*.slim"
+        - "**/*.rake"
+        - "**/*.js"
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.jsx"
+    patterns:
+      # message handler 흔적
+      - pattern-either:
+          - pattern-regex: '(?i)\baddEventListener\s*\(\s*["'']message["'']\s*,'
+          - pattern-regex: '(?i)\bwindow\.onmessage\s*='
+
+      # 민감 동작 흔적(둘 중 하나)
+      - pattern-either:
+          - pattern-regex: '(?i)\bdocument\.cookie\s*='
+          - pattern-regex: '(?i)\bCookies\.set\s*\('
+          - pattern-regex: '(?i)\blocalStorage\.setItem\s*\('
+          - pattern-regex: '(?i)\bsessionStorage\.setItem\s*\('
+          - pattern-regex: '(?i)\bfetch\s*\('
+          - pattern-regex: '(?i)\bcredentials\s*:\s*["'']include["'']'
+          - pattern-regex: '(?i)\bX-CSRF-Token\b'
+
+  - id: web.postmessage.bridge.wildcard-target-origin.generic
+    languages: [generic]
+    severity: WARNING
+    message: >
+      postMessage(...,"*") detected in non-JS file. Prefer strict targetOrigin allowlist.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: MEDIUM
+    paths:
+      include:
+        - "**/*.rb"
+        - "**/*.erb"
+        - "**/*.haml"
+        - "**/*.slim"
+        - "**/*.rake"
+        - "**/*.js"
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.jsx"
+    pattern-regex: '(?i)\bpostMessage\s*\([^,]+,\s*["'']\*["'']\s*\)'
