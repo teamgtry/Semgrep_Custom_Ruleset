@@ -1,3 +1,5 @@
+# vul_based_xss_custom 내의 파일 전체 적용 (범용)
+
 rules:
 - id: custom.xss.js.taint.to-html-parsing-sinks
   message: '[Custom Rule] Possible DOM XSS: untrusted data flows into HTML parsing sinks (innerHTML/outerHTML/insertAdjacentHTML/document.write).'
