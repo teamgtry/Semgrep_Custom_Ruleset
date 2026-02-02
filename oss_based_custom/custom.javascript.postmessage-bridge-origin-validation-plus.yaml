@@ -1,0 +1,246 @@
+rules:
+  ###########################################################################
+  # Rule 1) message handler + 민감 동작 + origin/source 검증 부재
+  ###########################################################################
+  - id: web.postmessage.missing-origin-source-validation.sensitive-action
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Unvalidated postMessage handler performs sensitive actions but does not
+      verify event.origin and/or event.source. This can enable cross-origin
+      message injection / confused deputy (e.g., authenticated fetch proxy,
+      session/conversation fixation via cookie overwrite).
+    metadata:
+      category: security
+      cwe:
+        - "CWE-346: Origin Validation Error"
+      technology:
+        - browser
+        - postMessage
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: HIGH
+    patterns:
+      # 1) message handler 형태(대표 케이스들) 중 하나를 매칭
+      - pattern-either:
+          - pattern: |
+              window.addEventListener("message", ($E) => {
+                ...
+              })
+          - pattern: |
+              window.addEventListener('message', ($E) => {
+                ...
+              })
+          - pattern: |
+              window.addEventListener("message", function ($E) {
+                ...
+              })
+          - pattern: |
+              window.addEventListener('message', function ($E) {
+                ...
+              })
+          - pattern: |
+              window.onmessage = ($E) => {
+                ...
+              }
+          - pattern: |
+              window.onmessage = function ($E) {
+                ...
+              }
+
+      # 2) handler 내부 "민감 동작" 시그널(둘 중 하나 이상)
+      - pattern-either:
+          # (a) 쿠키/세션/토큰 고정 가능 동작
+          - pattern: |
+              document.cookie = ...
+          - pattern: |
+              Cookies.set(...)
+          - pattern: |
+              Cookies.set(..., ...)
+          - pattern: |
+              localStorage.setItem(...)
+          - pattern: |
+              sessionStorage.setItem(...)
+
+          # (b) 인증 컨텍스트를 이용한 네트워크 요청 프록시(Discourse 케이스)
+          - pattern: |
+              fetch(..., { ..., credentials: "include", ... })
+          - pattern: |
+              fetch(..., { ..., credentials: 'include', ... })
+          - pattern: |
+              fetch(..., { ..., headers: { ..., "X-CSRF-Token": ..., ... }, ... })
+          - pattern: |
+              fetch(..., { ..., headers: { ..., 'X-CSRF-Token': ..., ... }, ... })
+
+          # (c) 메시지 기반 명령 디스패치(이벤트 이름으로 함수 호출)
+          - pattern: |
+              $DISPATCH[$MSG](...)
+          - pattern: |
+              $DISPATCH[$MSG](..., ...)
+          - pattern: |
+              $OBJ.events[$MSG](...)
+          - pattern: |
+              $OBJ.events[$MSG](..., ...)
+
+      # 3) "검증이 있다면 보통 보이는" origin/source 체크가 handler 안에 없어야 함
+      - pattern-not-inside: |
+          if ($E.origin === ...) {
+            ...
+          }
+      - pattern-not-inside: |
+          if ($E.origin == ...) {
+            ...
+          }
+      - pattern-not-inside: |
+          if ( ... $E.origin ... ) {
+            ...
+          }
+      - pattern-not-inside: |
+          if ($E.source === ...) {
+            ...
+          }
+      - pattern-not-inside: |
+          if ($E.source == ...) {
+            ...
+          }
+      - pattern-not-inside: |
+          if ( ... $E.source ... ) {
+            ...
+          }
+      - pattern-not-inside: |
+          if ($E.origin !== ...) return;
+      - pattern-not-inside: |
+          if ($E.origin != ...) return;
+      - pattern-not-inside: |
+          if ($E.source !== ...) return;
+      - pattern-not-inside: |
+          if ($E.source != ...) return;
+
+  ###########################################################################
+  # Rule 2) postMessage 송신 시 targetOrigin="*" (데이터/토큰 전달 경로 확대)
+  ###########################################################################
+  - id: web.postmessage.wildcard-target-origin
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      postMessage is sent with wildcard targetOrigin="*". If the payload includes
+      secrets/tokens or triggers privileged actions, this expands the attack surface.
+      Prefer a strict origin allowlist.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-346: Origin Validation Error"
+      technology:
+        - browser
+        - postMessage
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: |
+          $W.postMessage($DATA, "*")
+      - pattern: |
+          $W.postMessage($DATA, '*')
+
+  ###########################################################################
+  # Rule 3) message handler가 응답을 event.source.postMessage(...,"*")로 돌려줌
+  #         (Discourse 케이스 같은 "능력 프록시"에서 특히 위험)
+  ###########################################################################
+  - id: web.postmessage.reply-wildcard-to-event-source
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      Message handler replies using event.source.postMessage(...,"*"). When combined
+      with missing origin/source validation, this can enable cross-origin exfiltration
+      of privileged responses.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-346: Origin Validation Error"
+      technology:
+        - browser
+        - postMessage
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: |
+          $E.source.postMessage($DATA, "*")
+      - pattern: |
+          $E.source.postMessage($DATA, '*')
+          
+ ###########################################################################
+  # NEW: Ruby/ERB/HAML/SLIM 등 "문자열/템플릿에 박힌 JS"까지 잡는 generic 룰
+  #
+  # 목적:
+  #  - Discourse처럼 JS가 .rb/.erb에 들어있는 경우 탐지
+  #  - AST가 아니라 정규식 기반이라 오탐/미탐 가능성은 늘지만,
+  #    "message handler + 민감 동작 + origin/source 키워드 부재" 조합으로 최대한 줄임
+  ###########################################################################
+  - id: web.postmessage.generic.missing-origin-source-validation.sensitive-action
+    languages: [generic]
+    severity: ERROR
+    message: >
+      Possible unvalidated postMessage handler (in Ruby/templates or non-JS files):
+      message listener performs sensitive actions but no origin/source validation detected nearby.
+      Review for cross-origin message injection / confused deputy.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: HIGH
+    paths:
+      include:
+        - "**/*.rb"
+        - "**/*.erb"
+        - "**/*.haml"
+        - "**/*.slim"
+        - "**/*.rake"
+        - "**/*.js"
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.jsx"
+    patterns:
+      # 1) message handler 흔적
+      - pattern-either:
+          - pattern-regex: '(?i)\baddEventListener\s*\(\s*["'']message["'']\s*,'
+          - pattern-regex: '(?i)\bwindow\.onmessage\s*='
+          - pattern-regex: '(?i)\bonmessage\s*='
+
+      # 2) "민감 동작" 흔적 (둘 중 하나)
+      - pattern-either:
+          - pattern-regex: '(?i)\bdocument\.cookie\s*='
+          - pattern-regex: '(?i)\bCookies\.set\s*\('
+          - pattern-regex: '(?i)\blocalStorage\.setItem\s*\('
+          - pattern-regex: '(?i)\bsessionStorage\.setItem\s*\('
+          - pattern-regex: '(?i)\bfetch\s*\('
+          - pattern-regex: '(?i)\bcredentials\s*:\s*["'']include["'']'
+          - pattern-regex: '(?i)\bX-CSRF-Token\b'
+          - pattern-regex: '(?i)\bpostMessage\s*\('
+
+      # 3) origin/source 검증 흔적이 "파일 어딘가에라도" 있으면 일단 제외(보수적 접근)
+      - pattern-not-regex: '(?i)\bevent\.origin\b'
+      - pattern-not-regex: '(?i)\b\.origin\b'
+      - pattern-not-regex: '(?i)\bevent\.source\b'
+      - pattern-not-regex: '(?i)\b\.source\b'
+
+  - id: web.postmessage.generic.wildcard-target-origin
+    languages: [generic]
+    severity: WARNING
+    message: >
+      postMessage uses wildcard targetOrigin="*". If this is in a privileged bridge,
+      consider strict allowlist targetOrigin.
+    metadata:
+      category: security
+      cwe: ["CWE-346: Origin Validation Error"]
+      technology: [browser, postMessage]
+      confidence: MEDIUM
+    paths:
+      include:
+        - "**/*.rb"
+        - "**/*.erb"
+        - "**/*.haml"
+        - "**/*.slim"
+        - "**/*.js"
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.jsx"
+    pattern-regex: '(?i)\bpostMessage\s*\([^,]+,\s*["'']\*["'']\s*\)'
