@@ -1,0 +1,46 @@
+rules:
+  - id: custom.javascript.lang.security.audit.path-traversal.path-join-relativepath
+    message: >
+        [Custom Rule] path.join 또는 path.resolve 호출 시
+        relativePath 계열 변수가 그대로 사용되고 있습니다.
+        이는 디렉터리 트래버설(Path Traversal)로
+        이어질 수 있는 위험 패턴이므로
+        입력값 검증 또는 정규화가 필요합니다.
+    severity: WARNING
+    languages: [typescript, javascript]
+    confidence: MEDIUM
+    category: security
+    metadata:
+        cwe: "CWE-22"
+        owasp: "A01:2021-Broken Access Control"
+        technology: [nodejs, filesystem]
+        exploitability: medium
+        interfile: false
+        
+    pattern-either:
+      - patterns:
+          - pattern: path.join($BASE, $REL, ...)
+          - metavariable-regex:
+              metavariable: $REL
+              regex: '.*(relativePath|relPath|path|filepath|filePath|slug|name|filename|fileName).*'
+      - patterns:
+          - pattern: path.resolve($BASE, $REL, ...)
+          - metavariable-regex:
+              metavariable: $REL
+              regex: '.*(relativePath|relPath|path|filepath|filePath|slug|name|filename|fileName).*'
+      - patterns:
+          - pattern: $PATHMOD.join($BASE, $REL, ...)
+          - metavariable-regex:
+              metavariable: $PATHMOD
+              regex: '.*(path|Path)$'
+          - metavariable-regex:
+              metavariable: $REL
+              regex: '.*(relativePath|relPath|path|filepath|filePath|slug|name|filename|fileName).*'
+      - patterns:
+          - pattern: $PATHMOD.resolve($BASE, $REL, ...)
+          - metavariable-regex:
+              metavariable: $PATHMOD
+              regex: '.*(path|Path)$'
+          - metavariable-regex:
+              metavariable: $REL
+              regex: '.*(relativePath|relPath|path|filepath|filePath|slug|name|filename|fileName).*'
